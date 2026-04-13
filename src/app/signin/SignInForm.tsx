@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import AuthLayout from '@/components/auth/authlayout';
 import AuthInput from '@/components/auth/authinput';
@@ -29,7 +28,6 @@ function GithubIcon() {
 }
 
 export default function SignInForm() {
-  const router = useRouter();
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -50,8 +48,7 @@ export default function SignInForm() {
         setError(data.error || 'Sign in failed. Please check your credentials.');
         return;
       }
-      router.push('/papers');
-      router.refresh();
+      window.location.href = '/papers';
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {

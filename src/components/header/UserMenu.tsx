@@ -1,11 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
 import { LogOut, User } from 'lucide-react';
 
 export function UserMenu({ name }: { name: string }) {
-  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
 
@@ -19,7 +17,7 @@ export function UserMenu({ name }: { name: string }) {
 
   const signOut = async () => {
     await fetch('/api/signout', { method: 'POST' });
-    router.push('/signin');
+    window.location.href = '/signin';
   };
 
   const initials = name
