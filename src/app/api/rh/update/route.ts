@@ -14,7 +14,10 @@ export async function PUT(req: NextRequest) {
   const body = await req.json().catch(() => null);
   if (!body?.paper_id) return NextResponse.json({ error: 'Missing paper_id' }, { status: 400 });
 
-  const { paper_id, ...rubricData } = body;
+  const { paper_id, rubric } = body;
+  if (!rubric || typeof rubric !== 'object' || Array.isArray(rubric)) {
+    return NextResponse.json({ error: 'Missing or invalid rubric payload' }, { status: 400 });
+  }
 
   const res = await fetchRetry(
     `${BASE}/rh/${paper_id}/rh_api_update_rubric?token=${encodeURIComponent(token)}`,
@@ -25,7 +28,7 @@ export async function PUT(req: NextRequest) {
         'Content-Type': 'application/json',
         Accept: 'application/json',
       },
-      body: JSON.stringify(rubricData),
+      body: JSON.stringify(rubric),
     }
   );
 

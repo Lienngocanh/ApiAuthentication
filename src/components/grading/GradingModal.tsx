@@ -156,7 +156,7 @@ export default function GradingModal({
   paperName,
   onClose,
 }: {
-  paper: { paper_id: number; validation_status: string };
+  paper: { paper_id: number; validation_status: string; is_finalized?: boolean };
   paperName: string;
   onClose: () => void;
 }) {
@@ -169,6 +169,7 @@ export default function GradingModal({
   // validation_status from list-paper = upload OK, but ingestion (OCR/parse)
   // is tracked separately by /qh/{id}/status — always poll that endpoint.
   const [paperStatus, setPaperStatus] = React.useState<string>('PENDING');
+  const [paperFinalized, setPaperFinalized] = React.useState<boolean>(paper.is_finalized ?? false);
   const paperPollRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
@@ -182,6 +183,7 @@ export default function GradingModal({
         const s = normalizeStatus(raw);
         if (!cancelled) {
           setPaperStatus(s);
+          if (d?.is_finalized) setPaperFinalized(true);
           if (s !== 'SUCCESS') paperPollRef.current = setTimeout(poll, 8_000);
         }
       } catch {
@@ -203,6 +205,28 @@ export default function GradingModal({
   const [rubricFinalizing, setRubricFinalizing] = React.useState(false);
   const [rubricMsg, setRubricMsg] = React.useState<{ ok: boolean; warn?: boolean; text: string } | null>(null);
   const rubricSseRef = React.useRef<EventSource | null>(null);
+
+  // Load existing rubric state on mount so user doesn't have to re-create every time
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/rh/status?paper_id=${paperId}`, { cache: 'no-store' });
+        if (!res.ok || cancelled) return;
+        const d = await res.json().catch(() => null);
+        if (!d || cancelled) return;
+        const s = normalizeStatus(d.status ?? d.validation_status ?? '');
+        if (s) setRubricStatus(s);
+        if (d.rubric) setRubricJson(JSON.stringify(d.rubric, null, 2));
+        // If rubric exists, paper was already finalized
+        if (s && s !== 'FAILED') setPaperFinalized(true);
+        // If rubric is still in progress, resume SSE tracking
+        if (isActive(s)) startRubricSSE();
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paperId]);
 
   // ── Setup: Sample Answer ─────────────────────────────────────────────────
   const [shPaperId, setShPaperId] = React.useState<number | null>(null);
@@ -329,6 +353,21 @@ export default function GradingModal({
     setRubricCreating(true);
     setRubricMsg(null);
     try {
+      // Step 1: Finalize paper (required precondition before rubric creation)
+      if (!paperFinalized) {
+        const fRes = await fetch('/api/qh/finalize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paper_id: paperId }),
+        });
+        if (!fRes.ok) {
+          const fData = await fRes.json().catch(() => null);
+          throw new Error((fData?.error ?? fData?.message ?? 'Paper finalization failed') as string);
+        }
+        setPaperFinalized(true);
+      }
+
+      // Step 2: Create rubric
       const res = await fetch('/api/rh/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -351,7 +390,7 @@ export default function GradingModal({
     } finally {
       setRubricCreating(false);
     }
-  }, [paperId, startRubricSSE]);
+  }, [paperId, paperFinalized, startRubricSSE]);
 
   const saveRubric = React.useCallback(async () => {
     setRubricSaving(true);

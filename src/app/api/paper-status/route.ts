@@ -22,6 +22,10 @@ export async function GET(req: NextRequest) {
     }
   );
 
+  if (!res.ok) {
+    const errData = await res.json().catch(() => null);
+    return NextResponse.json(errData ?? { error: "Failed to fetch status" }, { status: res.status });
+  }
   const data = await res.json().catch(() => null);
-  return NextResponse.json(data ?? { error: "Failed to fetch status" }, { status: res.ok ? 200 : res.status });
+  return NextResponse.json(data ?? {}, { status: 200 });
 }
