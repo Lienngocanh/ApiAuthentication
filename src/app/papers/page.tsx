@@ -376,10 +376,9 @@ export default function PapersPage() {
         </div>
       </div>
 
-      {/* Detail drawer */}
+      {/* PDF preview modal */}
       {detailPaper && (() => {
         const blobUrl = paperBlobUrls.current.get(detailPaper.paper_id) ?? null;
-        // Prefer in-session blob URL; fall back to BFF download endpoint (works after reload)
         const pdfSrc = blobUrl ?? `/api/paper-file?paper_id=${detailPaper.paper_id}`;
         const isReady = normalizeStatus(detailPaper.validation_status) === 'SUCCESS';
 
@@ -387,57 +386,59 @@ export default function PapersPage() {
           <>
             {/* Backdrop */}
             <div
-              className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
               onClick={() => setDetailPaper(null)}
             />
 
-            {/* Panel */}
-            <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-3xl flex-col bg-white shadow-2xl">
+            {/* Centered modal — 90vw × 92vh */}
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+              <div className="pointer-events-auto flex w-full max-w-5xl flex-col rounded-2xl bg-white shadow-2xl"
+                style={{ height: 'min(92vh, 900px)' }}>
 
-              {/* Header */}
-              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100">
-                    <FileText className="h-4 w-4 text-slate-500" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-900 leading-tight">
-                      {fileNames[detailPaper.paper_id] ?? `Paper #${detailPaper.paper_id}`}
-                    </p>
-                    <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
-                      <span>#{detailPaper.paper_id}</span>
-                      {detailPaper.created_at && (
-                        <><span>·</span><span>{new Date(detailPaper.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span></>
-                      )}
-                      {detailPaper.total_marks != null && (
-                        <><span>·</span><span>{detailPaper.total_marks} marks</span></>
-                      )}
-                      <span>·</span>
-                      {isReady
-                        ? <span className="font-medium text-emerald-600">Ready</span>
-                        : <span className="font-medium text-amber-500">Processing</span>
-                      }
+                {/* Header */}
+                <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-3.5">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100">
+                      <FileText className="h-4 w-4 text-slate-500" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900">
+                        {fileNames[detailPaper.paper_id] ?? `Paper #${detailPaper.paper_id}`}
+                      </p>
+                      <div className="flex items-center gap-2 text-xs text-slate-400">
+                        <span>#{detailPaper.paper_id}</span>
+                        {detailPaper.created_at && (
+                          <><span>·</span><span>{new Date(detailPaper.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span></>
+                        )}
+                        {detailPaper.total_marks != null && (
+                          <><span>·</span><span>{detailPaper.total_marks} marks</span></>
+                        )}
+                        <span>·</span>
+                        {isReady
+                          ? <span className="font-medium text-emerald-600">Ready</span>
+                          : <span className="font-medium text-amber-500">Processing</span>
+                        }
+                      </div>
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setDetailPaper(null)}
+                    className="ml-4 shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setDetailPaper(null)}
-                  className="ml-3 shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
 
-              {/* PDF preview — full remaining height */}
-              <iframe
-                src={pdfSrc}
-                className="flex-1 w-full border-0"
-                title="Paper PDF preview"
-              />
+                {/* PDF — fills remaining space */}
+                <iframe
+                  src={pdfSrc}
+                  className="min-h-0 flex-1 w-full rounded-none border-0"
+                  title="Paper PDF preview"
+                />
 
-              {/* Footer actions */}
-              <div className="flex items-center gap-2 border-t border-slate-100 px-6 py-4">
+                {/* Footer */}
+                <div className="flex shrink-0 items-center gap-2 border-t border-slate-100 px-5 py-3.5">
                 <button
                   type="button"
                   onClick={() => { setDetailPaper(null); router.push(`/papers/${detailPaper.paper_id}/setup`); }}
@@ -456,7 +457,8 @@ export default function PapersPage() {
                   <GraduationCap className="h-3.5 w-3.5" /> Grade
                 </button>
               </div>
-            </div>
+            </div>{/* modal box */}
+            </div>{/* centering container */}
           </>
         );
       })()}
